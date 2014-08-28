@@ -7,16 +7,16 @@ from pprint import pformat
 import urllib
 
 
-
-        
-
-
 class ResourceManager(object):
+    """
+    A class to manage sub resources (Resource)
+    """
     id_field = None
     managed_class = None
 
 
     def __init__(self, base_url, headers):
+        """ All the params are passed in by the Connection manager """
         self.base_url = base_url
         self.headers = headers
 
@@ -26,11 +26,15 @@ class ResourceManager(object):
 
 
     def __get_managed_class_name(self):
+        """ Gets the Resource class name this ResourceManager manages """
         self.managed_class = self.__class__.__name__[0:-1]
+        # De-pluralize to get the Resource class name
         if len(self.__class__.__name__)>3 and self.__class__.__name__[-3]=="ies":
             self.managed_class = "%sy" % self.__class__.__name__[0:-3]
 
+
     def find(self, _id=None, query={}):
+        """ Finds a sub resource this ResourceManager manages """
         url = self.url
         if _id:
             url = "%s/%s" % (url, _id)
@@ -39,6 +43,7 @@ class ResourceManager(object):
         if query and isinstance(query, dict) and len(query.keys())>0:
             qs = "?%s" % urllib.urlencode(query)
 
+        # TODO: Handle pagination for large data sets
         results = requests.get("%s%s" % (url, qs), headers=self.headers)
         if not _id:
             for res in results.json():
@@ -48,12 +53,15 @@ class ResourceManager(object):
 
 
 class Resource(object):
+    """ The Resource class """
+
     id_field = None
     details = {}
     url = None
     default_details = {}
 
     def __init__(self, base_url, headers, data={}):
+        """ All the params are passed in from the Resource Manager """
         object.__setattr__(self, 'base_url', base_url)
         object.__setattr__(self, 'headers', headers)
         object.__setattr__(self, 'details', copy.deepcopy(self.default_details))
@@ -66,7 +74,9 @@ class Resource(object):
         object.__setattr__(self, 'url', "%s/%s" % (self.base_url, self.__get_url_from_class(self.klassname)))
         object.__setattr__(self, 'id_field', "%s_ID" % (self.klassname.upper()))
 
+
     def __get_url_from_class(self, klassname):
+        """ Gets the url based on the class name """
         if klassname[-1]=="y":
             return "%sies" % klassname[0:-1]
         else:
@@ -74,6 +84,7 @@ class Resource(object):
 
 
     def save(self):
+        """ Persists the resource """
         results = None
         data = copy.deepcopy(self.details)
 
@@ -94,6 +105,7 @@ class Resource(object):
 
 
     def delete(self):
+        """ Deletes the resource """
         results = None
         if self.id_field in self.details.keys():
             results = requests.delete("%s/%s" % (self.url, self.details[self.id_field]), headers=self.headers)
@@ -113,8 +125,7 @@ class Resource(object):
             super(self.__class__, self).__setattr__(key, value)
         else:
             self.details[key] = value
-
-   
+  
 
     def set(self, key, value):
         self.details[key] = value
@@ -143,11 +154,17 @@ class Opportunity(Resource):
     pass
 
 
-
-
-
-
 class Connection(object):
+    """
+    The connection class to hold information about the connection
+
+    base_url = the API url
+    headers = {
+        "Content-type":"application/json", 
+        "Authorization":"Basic %s" % base64.b64encode("%s:" % APIKEY)
+        }
+
+    """
     base_url = None
     headers = {}
 
